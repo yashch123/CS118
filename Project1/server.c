@@ -5,14 +5,17 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include<sys/socket.h>
+#include <arpa/inet.h>
+#include <string.h>
 
-const int port_num =  80;
+const short port_num = 2050;
 
 int main(int argc, char** argv){
 
   int sockfd, realsocketfd, port_num;
-  struct sockaddr_in server_addr, client_addr;
-  socklen_t client;
+  struct sockaddr_in server_addr;
+  memset(&server_addr,0,sizeof(server_addr));
+  
   char message[1024];
 
 
@@ -24,22 +27,30 @@ int main(int argc, char** argv){
 
   //Getting in all server information:
   server_addr.sin_family = AF_INET;
-  server_addr.sin_addr.s_addr = inet_addr("127.0.0.1"); //Connect to local host
+  server_addr.sin_addr.s_addr = INADDR_ANY; //Connect to local host
   server_addr.sin_port = htons(port_num);
-
+  fprintf(stderr, "Port address: %d", server_addr.sin_port);
   //Binding to socket and port:
-  int rtc = bind(sockfd, (struct sockaddr*)&server_addr, sizeof(client));
+  int rtc = bind(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
   if(rtc<0)
     fprintf(stderr, "\nError in binding socket and port number");
 
   //Waiting for client requests:
-  listen(sockfd,6);
-
+  fprintf(stderr, "%d\n", sockfd);
+  listen(sockfd,5);
+  //fprintf(stdout, "\nFirst");
   //Accepting connection requests:
-  rtc = accept(sockfd, (struct sockaddr*)&client_addr, (socklen_t*)&client);
-  if(rtc<0)
-    fprintf(stderr, "\nError in accepting connection");
-
+ // while(1){
+	struct sockaddr_in client_addr;
+	socklen_t client = sizeof(client_addr);
+	rtc = accept(sockfd, (struct sockaddr*)&client_addr, (socklen_t*)&client);	
+	//fprintf(stdout, "\nHERE");
+	if(rtc<0)
+	    fprintf(stderr, "\nError in accepting connection");
+	else
+	    fprintf(stdout, "\nConnected");
+//	}
+/*
   //Read clients message:
   rtc = read(realsocketfd, message, 1024);
   if(rtc<0)
@@ -47,7 +58,7 @@ int main(int argc, char** argv){
 
   //Dumping message onto console:
   fprintf(stdout, "\nMessage: %s", message);
-
+*/
   return 0;
 }
 
