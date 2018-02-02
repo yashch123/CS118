@@ -17,7 +17,7 @@ int main(int argc, char** argv){
   int sockfd, realsocketfd;
   struct sockaddr_in server_addr;
   
-  
+  int pID,new;
   char message[1024];
 
 
@@ -45,27 +45,39 @@ int main(int argc, char** argv){
   listen(sockfd,5);
   //fprintf(stdout, "\nFirst");
   //Accepting connection requests:
-  while(1){
+   while(1){
 	struct sockaddr_in client_addr;
 	socklen_t client = sizeof(client_addr);
-	rtc = accept(sockfd, (struct sockaddr*)&client_addr, (socklen_t*)&client);	
+	new = accept(sockfd, (struct sockaddr*)&client_addr, (socklen_t*)&client);	
 	//fprintf(stdout, "\nHERE");
-	if(rtc<0){
+	if(new<0){
 	    fprintf(stderr, "\nError in accepting connection");
 	    exit(1);
-	}else
-	    fprintf(stdout, "\nConnected");
-  }
-/*
+	}
+	//creating seperate process to keep connection going
+	pID = fork();
+	if(pID<0)
+	  fprintf(stderr,"\nError in creating process");
+	if(pID==0){    //child process
+	  rtc = read(new, message, 1024);
+	  if(rtc<0)
+	    fprintf(stderr,"\nError reading from socket");
+
+	  fprintf(stdout,"\n%s", message);       //TO DO: close socket!!!
+	} 
+	  
+       
+   }
+   /*
   //Read clients message:
-  rtc = read(realsocketfd, message, 1024);
+  rtc = read(new, message, 1024);
   if(rtc<0)
     fprintf(stderr,"\nError reading from socket");
 
   //Dumping message onto console:
   fprintf(stdout, "\nMessage: %s", message);
-*/
-   
+
+   */
 	return 0;
 }
 
