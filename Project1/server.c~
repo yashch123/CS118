@@ -5,53 +5,110 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include<sys/socket.h>
+#include <arpa/inet.h>
+#include <string.h>
+#include <errno.h>
+#include <stdlib.h>
 
-const int port_num =  80;
+const int port_num = 2050;
+void parse(char* );
 
 int main(int argc, char** argv){
 
-  int sockfd, realsocketfd, port_num;
-  struct sockaddr_in server_addr, client_addr;
-  socklen_t client;
+  int sockfd, realsocketfd;
+  struct sockaddr_in server_addr;
+  
+  int pID,new;
   char message[1024];
 
 
   sockfd = socket(AF_INET, SOCK_STREAM, 0);
-  if(sockfd < 0)
-    fprintf(stderr, "\nError in opening socket");
 
-  // memset((char*)&server_addr, 0, sizeof(server_addr)); //Clearing buffer for storing server address
+  if(sockfd < 0) {
+   fprintf(stderr, "\nError in opening socket");
+   exit(1);
+  }
 
   //Getting in all server information:
   server_addr.sin_family = AF_INET;
-  server_addr.sin_addr.s_addr = inet_addr("127.0.0.1"); //Connect to local host
+  server_addr.sin_addr.s_addr = INADDR_ANY; //Connect to local host
   server_addr.sin_port = htons(port_num);
 
-  //Binding to socket and port:
-  int rtc = bind(sockfd, (struct sockaddr*)&server_addr, sizeof(client));
-  if(rtc<0)
-    fprintf(stderr, "\nError in binding socket and port number");
 
+  //Binding to socket and port:
+
+  int rtc = bind(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
+  if(rtc<0){
+    fprintf(stderr, "\nError in binding socket and port number");
+    exit(1);
+  }
+  
   //Waiting for client requests:
-  listen(sockfd,6);
+
+  listen(sockfd,5);
 
   //Accepting connection requests:
-  rtc = accept(sockfd, (struct sockaddr*)&client_addr, (socklen_t*)&client);
-  if(rtc<0)
-    fprintf(stderr, "\nError in accepting connection");
+   while(1){
 
+        struct sockaddr_in client_addr;
+	socklen_t client = sizeof(client_addr);
+
+	new = accept(sockfd, (struct sockaddr*)&client_addr, (socklen_t*)&client);	
+	if(new<0){
+	    fprintf(stderr, "\nError in accepting connection");
+	    exit(1);
+	}
+
+	//creating seperate process to keep connection going
+	pID = fork();
+
+	if(pID<0)
+	  fprintf(stderr,"\nError in creating process");
+	if(pID==0){    //child process
+
+	  close(sockfd);
+
+	  rtc = read(new, message, 1024);
+	  if(rtc<0)
+	    fprintf(stderr,"\nError reading from socket");
+
+	  //parse(message);
+	  fprintf(stdout,"HERE");
+	  fprintf(stdout,"\n%s", message);       //TO DO: close socket!!!
+	  fprintf(stdout,"here2");
+	  parse(message);
+	  exit(0);
+	}
+	//else
+	//close(new);
+	  
+       
+   }
+
+  
+   /*
   //Read clients message:
-  rtc = read(realsocketfd, message, 1024);
+  rtc = read(new, message, 1024);
   if(rtc<0)
     fprintf(stderr,"\nError reading from socket");
 
   //Dumping message onto console:
   fprintf(stdout, "\nMessage: %s", message);
 
-  return 0;
+   */
+	return 0;
 }
 
+void parse(char* buffer){
 
+  //Use Tokens to get File name
+  char* file;
+  file = strtok(buffer," ");      //Fine name by looking at entry after first space
+  file = strtok(NULL," ");
 
+  file++;                         // get rid of the "/" character
 
+  fprintf(stdout,"File: %s",file);
+
+  return ;
 }
