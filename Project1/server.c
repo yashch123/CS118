@@ -13,7 +13,7 @@
 #include <fcntl.h>
 #include <time.h>
 
-const int port_num = 2050;
+const int port_num = 2010;
 const char* Filename;
 char* ver;
 char* conn;
@@ -55,7 +55,7 @@ int main(int argc, char** argv){
   
   //Waiting for client requests:
 
-  listen(sockfd,5);
+  listen(sockfd,10);
 
   //Accepting connection requests:
    while(1){
@@ -78,7 +78,7 @@ int main(int argc, char** argv){
 	if(pID==0){    //child process
 
 	  close(sockfd);
-
+	  memset(message, 0, 1024);
 	  rtc = read(new, message, 1024);
 	  if(rtc<0)
 	    fprintf(stderr,"\nError reading from socket");
@@ -89,8 +89,8 @@ int main(int argc, char** argv){
 
 	  exit(0);
 	}
-	//else
-	//close(new);
+	else
+	  close(new);
 	  
        
    }
@@ -136,9 +136,8 @@ void parse(char* buffer){
   //Get connection type from request message
   
   conn=file;
-  fprintf(stdout, "%s\n",file);
-
-  int ffd;
+  
+  int ffd; 
   ffd = open(Filename, O_RDONLY);
 
   if(ffd<0){
@@ -169,11 +168,11 @@ void parse(char* buffer){
   
   strcat(out,t1);
   strcat(out,stm);
-  strcat(out,"\r\n");
+  strcat(out,"\n");
 
   //HEADER lines
   strcat(out,conn);
-  strcat(out,"\r\n");
+  strcat(out,"\n");
 
   //Date and Time
   time_t rtime;
@@ -184,10 +183,9 @@ void parse(char* buffer){
   char* date = "Date: ";
   strcat(out,date);
   strcat(out,asctime(info));
-  //strcat(out,"\r\n");
-
+  
   //server line
-  char* serv = "Server: Charora/2.0\r\n";
+  char* serv = "Server: Charora/2.0\n";
   strcat(out,serv);
 
   char t2[21];
@@ -196,24 +194,54 @@ void parse(char* buffer){
   time_t mod_time = buf.st_mtime;
   sprintf(t2, "%li", buf.st_mtime);
   strcat(out,asctime(gmtime(&mod_time)));
-  strcat(out,"\r\n");
   
   char t3[20];
   char* conl="Content-Length: ";
   strcat(out,conl);
   sprintf(t3, "%li", buf.st_size);
   strcat(out,t3);
-  strcat(out,"\r\n");    //CHECK!!!!!
+  strcat(out,"\n");    //CHECK!!!!!
 
+  //GETTING FILE EXTENSION
+  int typeoffile;
+  const char *ext = strrchr(Filename, '.');
+  if (!ext || ext == Filename)
+    fprintf(stderr, "Some error\n"); //CHANGGEEEEEEE
+
+  if (strcmp(ext+1, "jpeg") == 0 || strcmp(ext+1, "jpg") == 0)
+    typeoffile = 0;
+  else if (strcmp(ext+1, "gif") == 0)
+    typeoffile = 1;
+  else if (strcmp(ext+1, "html") == 0 || strcmp(ext+1, "htm") == 0)
+    typeoffile = 2;
+  else
+    fprintf(stderr, "Some random file extension\n");
+
+  //CONCATENATING CONTENT TYPE
+  strcat(out,"Content-Type: ");
+  if (typeoffile == 0)
+    strcat(out,"image/jpeg\n\n");
+  else if (typeoffile == 1)
+    strcat(out,"image/gif\n\n");
+  else if (typeoffile == 2)
+    strcat(out,"text/html\n\n");
+  else
+    fprintf(stderr, "Some random type\n");
   
-  fprintf(stdout,"\n%s\n",out);
-
+  fprintf(stdout,"\n%s",out);
+ 
   int size;
-  char *br = malloc(sizeof(char) * (buf.st_size+1));
-  
-  size=read(ffd, br,buf.st_size+1);
+  char *br = malloc(sizeof(char) * (buf.st_size));
 
-  write(newfd,br,buf.st_size+1);
-  
+  /*
+    Need to send three lines of header first
+    CODE
+    CONTENT TYPE
+    \r\n
+   */
+  write(newfd, out, strlen(out));
+  size=read(ffd, br,buf.st_size);
+  send(newfd,br,buf.st_size+1,0);
+  close(newfd);
   return ;
 }
